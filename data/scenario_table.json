@@ -1,0 +1,132 @@
+{
+ "scenarios": {
+  "normal_drill": {
+   "description": "Everything succeeds; all four approvals granted.",
+   "expected_rto": 685,
+   "steps": {
+    "STEP_01_VERIFY_REPLICATION": {
+     "result": "SUCCESS",
+     "details": "Replication lag verified at 2.4s (threshold <15s); WAL state STREAMING on pg-payments-dr.",
+     "duration": 55,
+     "telemetry": {
+      "lag_seconds": 2.4,
+      "wal_state": "STREAMING"
+     }
+    },
+    "STEP_02_FAILOVER_DB": {
+     "result": "SUCCESS",
+     "details": "Standby pg-payments-dr promoted; old primary fenced.",
+     "duration": 165
+    },
+    "STEP_03_REPOINT_APP": {
+     "result": "SUCCESS",
+     "details": "payments-api repointed to the promoted database.",
+     "duration": 210
+    },
+    "STEP_04_UPDATE_DNS": {
+     "result": "SUCCESS",
+     "details": "payments.example.com switched to the DR endpoint.",
+     "duration": 140
+    },
+    "STEP_05_VALIDATE_E2E": {
+     "result": "SUCCESS",
+     "details": "Canary HTTP 200, p99 112 ms.",
+     "duration": 95
+    },
+    "STEP_06_COMMUNICATE_COMPLETE": {
+     "result": "SUCCESS",
+     "details": "Completion notice distributed to stakeholders.",
+     "duration": 20
+    }
+   }
+  },
+  "replication_lag_retry_drill": {
+   "description": "Replication lag is high on the first check; one 30 s wait and retry.",
+   "expected_rto": 755,
+   "steps": {
+    "STEP_01_VERIFY_REPLICATION": [
+     {
+      "result": "RETRY",
+      "details": "Replication lag 22.0s exceeds threshold (<15s); WAL STREAMING.",
+      "duration": 40,
+      "telemetry": {
+       "lag_seconds": 22.0,
+       "wal_state": "STREAMING"
+      }
+     },
+     {
+      "result": "SUCCESS",
+      "details": "Replication lag verified at 2.4s (threshold <15s); WAL state STREAMING on pg-payments-dr.",
+      "duration": 55,
+      "telemetry": {
+       "lag_seconds": 2.4,
+       "wal_state": "STREAMING"
+      }
+     }
+    ],
+    "STEP_02_FAILOVER_DB": {
+     "result": "SUCCESS",
+     "details": "Standby pg-payments-dr promoted; old primary fenced.",
+     "duration": 165
+    },
+    "STEP_03_REPOINT_APP": {
+     "result": "SUCCESS",
+     "details": "payments-api repointed to the promoted database.",
+     "duration": 210
+    },
+    "STEP_04_UPDATE_DNS": {
+     "result": "SUCCESS",
+     "details": "payments.example.com switched to the DR endpoint.",
+     "duration": 140
+    },
+    "STEP_05_VALIDATE_E2E": {
+     "result": "SUCCESS",
+     "details": "Canary HTTP 200, p99 112 ms.",
+     "duration": 95
+    },
+    "STEP_06_COMMUNICATE_COMPLETE": {
+     "result": "SUCCESS",
+     "details": "Completion notice distributed to stakeholders.",
+     "duration": 20
+    }
+   }
+  },
+  "app_repoint_failure_drill": {
+   "description": "App repoint fails on a TLS certificate error; rolled back with approvals.",
+   "expected_rto": 695,
+   "steps": {
+    "STEP_01_VERIFY_REPLICATION": {
+     "result": "SUCCESS",
+     "details": "Replication lag verified at 2.4s (threshold <15s); WAL state STREAMING on pg-payments-dr.",
+     "duration": 60,
+     "telemetry": {
+      "lag_seconds": 2.4,
+      "wal_state": "STREAMING"
+     }
+    },
+    "STEP_02_FAILOVER_DB": {
+     "result": "SUCCESS",
+     "details": "Standby pg-payments-dr promoted; old primary fenced.",
+     "duration": 175
+    },
+    "STEP_03_REPOINT_APP": {
+     "result": "FAILED",
+     "details": "TLS certificate CN validation error on payments-api (DR region).",
+     "duration": 190
+    }
+   },
+   "rollback": {
+    "STEP_03_REPOINT_APP": {
+     "result": "ROLLED_BACK",
+     "details": "Application configuration restored.",
+     "duration": 135
+    },
+    "STEP_02_FAILOVER_DB": {
+     "result": "ROLLED_BACK",
+     "details": "Standby demoted; primary unfenced.",
+     "duration": 135
+    }
+   }
+  }
+ }
+}
